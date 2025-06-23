@@ -18,6 +18,7 @@ class Settings:
     
     # Frontend URLs
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    BACKEND_URL: str = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
     
     # Database Configuration (if needed)
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")

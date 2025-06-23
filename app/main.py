@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .checkout.routes import router as checkout_router
+from config import settings
 
 app = FastAPI(
     title="E-commerce API",
@@ -11,7 +12,7 @@ app = FastAPI(
 # Add CORS middleware to allow requests from Next.js frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Your Next.js app
+    allow_origins=[settings.FRONTEND_URL],  # Use env var
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
