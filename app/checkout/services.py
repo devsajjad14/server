@@ -4,7 +4,7 @@ import logging
 from typing import Dict, Any, Optional, List
 from decimal import Decimal
 import httpx
-from datetime import datetime
+from datetime import datetime, timedelta
 import paypalrestsdk
 from .schemas import (
     CheckoutRequestSchema, 
@@ -62,8 +62,7 @@ class PayPalCommerceService:
             token_data = auth_response.json()
             self.access_token = token_data["access_token"]
             # Set expiration to 1 hour from now (with 5 minute buffer)
-            self.token_expires_at = datetime.utcnow().replace(second=0, microsecond=0)
-            self.token_expires_at = self.token_expires_at.replace(minute=self.token_expires_at.minute + 55)
+            self.token_expires_at = datetime.utcnow() + timedelta(minutes=55)
             
             return self.access_token
     

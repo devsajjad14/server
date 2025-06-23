@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .hello.routes import router as hello_router
 from .checkout.routes import router as checkout_router
 
 app = FastAPI(
@@ -19,16 +18,8 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(hello_router, prefix="/hello", tags=["hello"])
 app.include_router(checkout_router, prefix="/checkout", tags=["checkout"])
 
 @app.get("/")
 async def root():
-    return {
-        "message": "Welcome to E-commerce API!", 
-        "docs": "/docs",
-        "services": {
-            "hello": "/hello",
-            "checkout": "/checkout"
-        }
-    } 
+    return {"message": "Welcome to Fastapi server"} 

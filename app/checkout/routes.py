@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks, Body
 from fastapi.responses import JSONResponse
 from typing import Dict, Any
 import logging
@@ -33,6 +33,7 @@ async def process_paypal_checkout(
     The user stays on your site throughout the process.
     """
     try:
+        logger.info(f"Received raw checkout payload: {request.dict()}")
         logger.info(f"Received PayPal checkout request for order: {request.order_id}")
         
         # Validate payment method
