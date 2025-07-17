@@ -22,24 +22,43 @@ logger = logging.getLogger(__name__)
 class PayPalCommerceService:
     """PayPal Commerce Platform integration service"""
     
-    def __init__(self):
-        # Use configuration from settings
-        self.client_id = settings.PAYPAL_CLIENT_ID
-        self.client_secret = settings.PAYPAL_CLIENT_SECRET
-        self.mode = settings.PAYPAL_MODE
+    def __init__(self, client_id: str = None, client_secret: str = None, mode: str = None):
+        # Use provided credentials or fall back to environment variables
+        self.client_id = client_id or settings.PAYPAL_CLIENT_ID
+        self.client_secret = client_secret or settings.PAYPAL_CLIENT_SECRET
+        self.mode = mode or settings.PAYPAL_MODE
         self.base_url = "https://api-m.sandbox.paypal.com" if self.mode == "sandbox" else "https://api-m.paypal.com"
         
         # Validate configuration
-        if not settings.validate_paypal_config():
-            logger.warning("PayPal configuration is incomplete. Please set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET environment variables.")
+        if not self.client_id or not self.client_secret:
+            logger.warning("PayPal configuration is incomplete. Credentials must be provided or set in environment variables.")
         
-        # Initialize PayPal SDK
+        # Initialize PayPal SDK with current credentials
+        if self.client_id and self.client_secret:
+            paypalrestsdk.configure({
+                "mode": self.mode,
+                "client_id": self.client_id,
+                "client_secret": self.client_secret
+            })
+        
+        self.access_token = None
+        self.token_expires_at = None
+    
+    def update_credentials(self, client_id: str, client_secret: str, mode: str = None):
+        """Update credentials dynamically"""
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.mode = mode or self.mode
+        self.base_url = "https://api-m.sandbox.paypal.com" if self.mode == "sandbox" else "https://api-m.paypal.com"
+        
+        # Reconfigure PayPal SDK with new credentials
         paypalrestsdk.configure({
             "mode": self.mode,
             "client_id": self.client_id,
             "client_secret": self.client_secret
         })
         
+        # Reset access token cache
         self.access_token = None
         self.token_expires_at = None
     
@@ -98,12 +117,12 @@ class PayPalCommerceService:
             logger.info(f"Creating PayPal order for order_id: {checkout_request.order_id}")
             
             # Validate configuration
-            if not settings.validate_paypal_config():
+            if not self.client_id or not self.client_secret:
                 return CheckoutResponseSchema(
                     success=False,
                     order_id=checkout_request.order_id,
                     status="failed",
-                    message="PayPal configuration is incomplete. Please check your environment variables.",
+                    message="PayPal configuration is incomplete. Please configure PayPal credentials in admin settings.",
                     error_code="CONFIG_ERROR",
                     timestamp=datetime.utcnow()
                 )
@@ -216,12 +235,12 @@ class PayPalCommerceService:
             logger.info(f"Capturing payment for PayPal order: {paypal_order_id}")
             
             # Validate configuration
-            if not settings.validate_paypal_config():
+            if not self.client_id or not self.client_secret:
                 return PaymentCaptureResponseSchema(
                     success=False,
                     payment_id=paypal_order_id,
                     status="failed",
-                    message="PayPal configuration is incomplete.",
+                    message="PayPal configuration is incomplete. Please configure PayPal credentials in admin settings.",
                     timestamp=datetime.utcnow()
                 )
             
@@ -283,7 +302,7 @@ class PayPalCommerceService:
         """Get PayPal order details"""
         try:
             # Validate configuration
-            if not settings.validate_paypal_config():
+            if not self.client_id or not self.client_secret:
                 return None
             
             access_token = await self._get_access_token()
@@ -352,13 +371,31 @@ class PayPalCommerceService:
 class CheckoutService:
     """Main checkout service that orchestrates the payment process"""
     
-    def __init__(self):
-        self.paypal_service = PayPalCommerceService()
+    def __init__(self, paypal_client_id: str = None, paypal_client_secret: str = None, paypal_mode: str = None):
+        # Initialize PayPal service with provided credentials or use default
+        self.paypal_service = PayPalCommerceService(
+            client_id=paypal_client_id,
+            client_secret=paypal_client_secret,
+            mode=paypal_mode
+        )
     
-    async def process_checkout(self, checkout_request: CheckoutRequestSchema) -> CheckoutResponseSchema:
+    def update_paypal_credentials(self, client_id: str, client_secret: str, mode: str = None):
+        """Update PayPal credentials dynamically"""
+        self.paypal_service.update_credentials(client_id, client_secret, mode)
+    
+    async def process_checkout(self, checkout_request: CheckoutRequestSchema, payment_config: dict = None) -> CheckoutResponseSchema:
         """Process complete checkout flow"""
         try:
             logger.info(f"Processing checkout for order: {checkout_request.order_id}")
+            
+            # Update PayPal credentials if provided in payment_config
+            if payment_config and payment_config.get('client_id') and payment_config.get('client_secret'):
+                logger.info("Updating PayPal credentials from payment config")
+                self.paypal_service.update_credentials(
+                    client_id=payment_config['client_id'],
+                    client_secret=payment_config['client_secret'],
+                    mode=payment_config.get('mode', 'sandbox')
+                )
             
             # Validate request
             if not checkout_request.items:

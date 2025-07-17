@@ -43,6 +43,7 @@ class CheckoutRequestSchema(BaseModel):
     currency: str = Field(default="USD", description="Currency code")
     payment_method: str = Field(default="paypal", description="Payment method")
     notes: Optional[str] = Field(None, description="Order notes")
+    payment_config: Optional[Dict[str, Any]] = Field(None, description="Payment gateway configuration (credentials, mode, etc.)")
 
 class PayPalOrderSchema(BaseModel):
     """PayPal order creation request"""
